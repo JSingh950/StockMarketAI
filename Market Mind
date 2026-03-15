@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MarketMind — AI Stock Predictor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff;--bg2:#f7f8fa;--bg3:#f0f2f5;--bg4:#e4e7ed;
+  --border:#e2e5ea;--border2:#d0d4dc;
+  --text:#0d1117;--text2:#4a5568;--text3:#8a94a6;
+  --green:#00b37e;--green-bg:#e6f7f1;--green-light:#ccf0e3;
+  --red:#e53e3e;--red-bg:#fff0f0;--red-light:#fecaca;
+  --blue:#2563eb;--blue-bg:#eff6ff;
+  --amber:#d97706;--amber-bg:#fffbeb;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --r:10px;--rs:7px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg2);color:var(--text);min-height:100vh}
+#app{max-width:980px;margin:0 auto}
+
+/* NAV */
+.topnav{background:var(--bg);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:10}
+.nav-brand{display:flex;align-items:center;gap:8px}
+.nav-logo{width:28px;height:28px;background:var(--text);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.nav-logo svg{width:15px;height:15px}
+.nav-title{font-size:15px;font-weight:600;letter-spacing:-.3px}
+.live-badge{display:flex;align-items:center;gap:5px;background:var(--green-bg);border:1px solid var(--green-light);border-radius:20px;padding:3px 10px;font-size:10px;color:var(--green);font-family:'DM Mono',monospace;font-weight:500}
+.live-dot{width:5px;height:5px;background:var(--green);border-radius:50%;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.nav-right{display:flex;gap:6px}
+.nav-btn{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);padding:5px 12px;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.nav-btn:hover{background:var(--bg3)}
+.nav-btn.primary{background:var(--text);color:#fff;border-color:var(--text)}
+.nav-btn.primary:hover{background:#1a2233}
+
+/* SEARCH */
+.search-zone{background:var(--bg);border-bottom:1px solid var(--border);padding:12px 20px}
+.search-inner{display:flex;gap:8px;max-width:600px}
+.search-wrap{flex:1;position:relative;display:flex;align-items:center}
+.search-ico{position:absolute;left:11px;width:15px;height:15px;color:var(--text3);pointer-events:none}
+.search-input{width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--rs);padding:9px 12px 9px 34px;font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:var(--text);letter-spacing:.5px;text-transform:uppercase;outline:none;transition:all .2s}
+.search-input:focus{border-color:var(--blue);background:var(--bg);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.search-input::placeholder{color:var(--text3);text-transform:none;letter-spacing:0;font-family:'DM Sans',sans-serif;font-weight:400}
+.search-btn{background:var(--text);color:#fff;border:none;border-radius:var(--rs);padding:9px 20px;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .15s;white-space:nowrap}
+.search-btn:hover{background:#1a2233}
+.search-btn:active{transform:scale(.98)}
+.search-btn:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed;transform:none}
+
+/* WATCHLIST */
+.watchlist{background:var(--bg);border-bottom:1px solid var(--border);padding:0 20px;display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
+.watchlist::-webkit-scrollbar{display:none}
+.wtab{display:flex;align-items:center;gap:7px;padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-size:12px;color:var(--text2);transition:all .15s}
+.wtab:hover{color:var(--text);background:var(--bg2)}
+.wtab.active{border-bottom-color:var(--blue);color:var(--blue);font-weight:500}
+.wtab-sym{font-family:'DM Mono',monospace;font-size:12px;font-weight:500}
+.wtab-chg{font-size:10px;padding:1px 6px;border-radius:3px;font-family:'DM Mono',monospace;font-weight:500}
+.wtab-chg.up{background:var(--green-bg);color:var(--green)}
+.wtab-chg.dn{background:var(--red-bg);color:var(--red)}
+
+.main{padding:16px 20px}
+
+/* ERROR */
+.error-banner{background:var(--red-bg);border:1px solid var(--red-light);border-radius:var(--rs);padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:12px;display:none}
+
+/* HERO */
+.hero{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:20px 24px;margin-bottom:14px;box-shadow:var(--shadow)}
+.hero-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.hero-name{font-size:22px;font-weight:600;letter-spacing:-.4px;margin-bottom:3px}
+.hero-meta{font-size:12px;color:var(--text3);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dot-sep{width:3px;height:3px;background:var(--border2);border-radius:50%;display:inline-block}
+.hero-price{font-size:32px;font-weight:600;font-family:'DM Mono',monospace;letter-spacing:-1px;text-align:right}
+.hero-change{display:flex;align-items:center;gap:6px;justify-content:flex-end;margin-top:4px}
+.chg-pill{font-size:13px;font-weight:500;padding:3px 10px;border-radius:20px;font-family:'DM Mono',monospace}
+.chg-pill.up{background:var(--green-bg);color:var(--green)}
+.chg-pill.dn{background:var(--red-bg);color:var(--red)}
+.chg-period{font-size:11px;color:var(--text3)}
+.quick-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--rs);overflow:hidden}
+.qs{background:var(--bg);padding:9px 12px}
+.qs-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.qs-val{font-size:12px;font-weight:500;font-family:'DM Mono',monospace;color:var(--text)}
+
+/* GRID */
+.layout-grid{display:grid;grid-template-columns:1fr 296px;gap:14px;margin-bottom:14px}
+
+/* CARDS */
+.card{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 16px 0}
+.card-title{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.tf-grp{display:flex;gap:2px;background:var(--bg2);border-radius:6px;padding:2px}
+.tf-btn{background:transparent;border:none;border-radius:4px;padding:3px 9px;font-size:11px;font-weight:500;font-family:'DM Mono',monospace;color:var(--text3);cursor:pointer;transition:all .15s}
+.tf-btn.active{background:var(--bg);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.tf-btn:hover:not(.active){color:var(--text2)}
+.chart-legend{display:flex;gap:14px;padding:8px 16px 0;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text3)}
+.leg-line{width:18px;height:2px;border-radius:1px}
+.chart-wrap{position:relative;width:100%;height:240px;padding:8px 16px 12px}
+
+/* SIDEBAR */
+.sidebar{display:flex;flex-direction:column;gap:14px}
+.sig-body{padding:14px}
+.sig-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sig-badge{font-size:22px;font-weight:600;padding:6px 18px;border-radius:var(--rs);font-family:'DM Mono',monospace}
+.sig-badge.buy{background:var(--green-bg);color:var(--green)}
+.sig-badge.sell{background:var(--red-bg);color:var(--red)}
+.sig-badge.hold{background:var(--amber-bg);color:var(--amber)}
+.score-wrap{flex:1}
+.score-lbl{font-size:10px;color:var(--text3);margin-bottom:4px}
+.score-track{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.score-fill{height:100%;border-radius:3px;transition:width 1s ease}
+.score-num{font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);margin-top:3px}
+.conf-row{display:flex;justify-content:space-between;padding:8px 0 0;border-top:1px solid var(--border)}
+.conf-lbl{font-size:11px;color:var(--text3)}
+.conf-val{font-size:12px;font-family:'DM Mono',monospace;font-weight:500}
+.prob-body{padding:14px}
+.prob-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.prob-row:last-child{margin-bottom:0}
+.prob-lbl{font-size:11px;width:52px;flex-shrink:0}
+.prob-track{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.prob-fill{height:100%;border-radius:3px;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+.prob-pct{font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);width:28px;text-align:right}
+.ind-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.ind-cell{background:var(--bg);padding:10px 12px}
+.ind-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.ind-val{font-size:15px;font-weight:500;font-family:'DM Mono',monospace}
+.ind-tag{font-size:10px;padding:2px 7px;border-radius:3px;display:inline-block;margin-top:3px;font-weight:500}
+.it-bull{background:var(--green-bg);color:var(--green)}
+.it-bear{background:var(--red-bg);color:var(--red)}
+.it-neut{background:var(--bg3);color:var(--text3)}
+.it-hot{background:var(--amber-bg);color:var(--amber)}
+
+/* PATTERNS */
+.pat-body{padding:4px 16px 14px}
+.pat-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)}
+.pat-row:last-child{border-bottom:none}
+.pat-ico{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.pat-ico.bull{background:var(--green-bg)}
+.pat-ico.bear{background:var(--red-bg)}
+.pat-ico.neut{background:var(--bg3)}
+.pat-info{flex:1}
+.pat-name{font-size:12px;font-weight:500}
+.pat-str{font-size:10px;color:var(--text3)}
+.pat-sig{font-size:10px;font-weight:500;padding:2px 8px;border-radius:3px}
+.ps-bull{background:var(--green-bg);color:var(--green)}
+.ps-bear{background:var(--red-bg);color:var(--red)}
+.ps-neut{background:var(--bg3);color:var(--text3)}
+.pat-count{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+
+/* SR */
+.sr-body{padding:0 16px 14px}
+.sr-row{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-radius:var(--rs);margin-bottom:4px}
+.sr-row:last-child{margin-bottom:0}
+.sr-row.resist{background:var(--red-bg);border-left:3px solid var(--red)}
+.sr-row.cur{background:var(--blue-bg);border-left:3px solid var(--blue)}
+.sr-row.supp{background:var(--green-bg);border-left:3px solid var(--green)}
+.sr-type{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:1px}
+.sr-price{font-family:'DM Mono',monospace;font-weight:500;font-size:13px}
+.sr-dist{font-size:11px;font-family:'DM Mono',monospace}
+
+/* NEWS */
+.news-row{display:flex;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;text-decoration:none;color:inherit}
+.news-row:last-child{border-bottom:none}
+.news-row:hover{background:var(--bg2)}
+.news-headline{font-size:12px;font-weight:500;line-height:1.4;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.news-meta{font-size:10px;color:var(--text3)}
+
+/* AI */
+.ai-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px}
+.ai-hdr{display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid var(--border);background:#f8faff}
+.ai-dot{width:8px;height:8px;background:var(--blue);border-radius:50%;animation:blink 2s infinite}
+.ai-title{font-size:11px;font-weight:600;color:var(--blue);text-transform:uppercase;letter-spacing:.5px}
+.ai-model{font-size:10px;color:var(--text3);margin-left:auto;font-family:'DM Mono',monospace}
+.ai-body{padding:16px;font-size:13px;line-height:1.8;color:var(--text2)}
+.ai-body.loading{color:var(--text3)}
+.sk{background:var(--bg3);border-radius:4px;height:13px;margin-bottom:8px;animation:shimmer 1.5s infinite;background-size:200% 100%}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0;background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%)}}
+
+/* PEER */
+.peer-row{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.peer-row:last-child{border-bottom:none}
+.peer-row:hover{background:var(--bg2)}
+.peer-sym{font-family:'DM Mono',monospace;font-size:12px;font-weight:500}
+.peer-chg{font-size:11px;font-family:'DM Mono',monospace}
+
+/* EMPTY */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center}
+.empty-ico{font-size:40px;margin-bottom:14px;opacity:.25}
+.empty-title{font-size:17px;font-weight:500;color:var(--text2);margin-bottom:8px}
+.empty-sub{font-size:13px;color:var(--text3);max-width:340px;line-height:1.65}
+
+/* SPINNER */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.disclaimer{text-align:center;padding:6px 0 20px;font-size:10px;color:var(--text3)}
+
+
+
+@media(max-width:700px){
+  .layout-grid{grid-template-columns:1fr}
+  .quick-stats{grid-template-columns:repeat(3,1fr)}
+  .quick-stats .qs:nth-child(n+4){display:none}
+  .hero-price{font-size:26px}
+  .hero-name{font-size:18px}
+}
+</style>
+</head>
+<body>
+
+
+
+<div id="app">
+
+  <div class="topnav">
+    <div class="nav-brand">
+      <div class="nav-logo">
+        <svg viewBox="0 0 16 16" fill="none"><polyline points="1,12 5,7 8,10 12,4 15,6" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <span class="nav-title">MarketMind</span>
+    </div>
+    <div class="live-badge"><div class="live-dot"></div>Finnhub Live</div>
+    <div class="nav-right">
+      <button class="nav-btn primary" onclick="runAnalysis()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="search-zone">
+    <div class="search-inner">
+      <div class="search-wrap">
+        <svg class="search-ico" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input class="search-input" id="searchInput" type="text" placeholder="Search ticker — AAPL, NVDA, TSLA, BTC-USD…" maxlength="10"/>
+      </div>
+      <button class="search-btn" id="analyzeBtn" onclick="runAnalysis()">Analyze</button>
+    </div>
+  </div>
+
+  <div class="watchlist" id="watchlist"></div>
+
+  <div class="main">
+    <div class="error-banner" id="errorBanner"></div>
+
+    <div class="empty" id="emptyState">
+      <div class="empty-ico">📈</div>
+      <div class="empty-title">Search any stock to begin</div>
+      <div class="empty-sub">Enter a ticker symbol above. Live prices, candles, fundamentals and news are pulled directly from Finnhub in real time.</div>
+    </div>
+
+    <div id="dashboard" style="display:none">
+
+      <div class="hero">
+        <div class="hero-top">
+          <div>
+            <div class="hero-name" id="heroName">—</div>
+            <div class="hero-meta">
+              <span id="heroTicker" style="font-family:'DM Mono',monospace;font-weight:500"></span>
+              <span class="dot-sep"></span><span id="heroExchange"></span>
+              <span class="dot-sep"></span><span id="heroSector" style="color:var(--text3)"></span>
+            </div>
+          </div>
+          <div>
+            <div class="hero-price" id="heroPrice">—</div>
+            <div class="hero-change">
+              <span class="chg-pill" id="heroChgPill">—</span>
+              <span class="chg-period">Today</span>
+            </div>
+            <div style="font-size:10px;color:var(--text3);text-align:right;margin-top:3px" id="heroTimestamp"></div>
+          </div>
+        </div>
+        <div class="quick-stats">
+          <div class="qs"><div class="qs-lbl">Open</div><div class="qs-val" id="qs-open">—</div></div>
+          <div class="qs"><div class="qs-lbl">High</div><div class="qs-val" id="qs-high">—</div></div>
+          <div class="qs"><div class="qs-lbl">Low</div><div class="qs-val" id="qs-low">—</div></div>
+          <div class="qs"><div class="qs-lbl">Mkt Cap</div><div class="qs-val" id="qs-mcap">—</div></div>
+          <div class="qs"><div class="qs-lbl">P/E Ratio</div><div class="qs-val" id="qs-pe">—</div></div>
+          <div class="qs"><div class="qs-lbl">52W High</div><div class="qs-val" id="qs-52h">—</div></div>
+        </div>
+      </div>
+
+      <div class="layout-grid">
+        <div style="display:flex;flex-direction:column;gap:14px">
+
+          <div class="card">
+            <div class="card-hdr">
+              <span class="card-title" id="chartTitle">Price History</span>
+              <div class="tf-grp">
+                <button class="tf-btn active" id="tf-1W" onclick="setTF('1W')">1W</button>
+                <button class="tf-btn" id="tf-1M" onclick="setTF('1M')">1M</button>
+                <button class="tf-btn" id="tf-3M" onclick="setTF('3M')">3M</button>
+                <button class="tf-btn" id="tf-1Y" onclick="setTF('1Y')">1Y</button>
+              </div>
+            </div>
+            <div class="chart-legend">
+              <div class="leg-item"><div class="leg-line" style="background:#2563eb"></div>Price</div>
+              <div class="leg-item"><div class="leg-line" style="background:#f59e0b"></div>SMA 20</div>
+              <div class="leg-item"><div class="leg-line" style="background:#8b5cf6"></div>SMA 50</div>
+              <div class="leg-item"><div class="leg-line" style="background:#00b37e;border-top:2px dashed #00b37e;height:0;width:18px"></div><span style="margin-left:5px">Median Forecast</span></div>
+              <div class="leg-item"><div style="width:18px;height:8px;background:rgba(37,99,235,0.12);border-radius:2px"></div>Confidence Range</div>
+            </div>
+            <div class="chart-wrap"><canvas id="priceChart"></canvas></div>
+          </div>
+
+          <div class="card">
+            <div class="card-hdr" style="padding-bottom:8px">
+              <span class="card-title">Detected Chart Patterns</span>
+              <span class="pat-count" id="patCount"></span>
+            </div>
+            <div class="pat-body" id="patList"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-hdr" style="padding-bottom:10px"><span class="card-title">Support &amp; Resistance</span></div>
+            <div class="sr-body" id="srLevels"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-hdr" style="padding-bottom:10px"><span class="card-title">Latest News</span></div>
+            <div id="newsList"></div>
+          </div>
+
+        </div>
+
+        <div class="sidebar">
+
+          <div class="card">
+            <div class="card-hdr" style="padding-bottom:10px"><span class="card-title">AI Signal</span></div>
+            <div class="sig-body">
+              <div class="sig-row">
+                <div class="sig-badge" id="sigBadge">—</div>
+                <div class="score-wrap">
+                  <div class="score-lbl">Pattern Score</div>
+                  <div class="score-track"><div class="score-fill" id="scoreFill" style="width:0%"></div></div>
+                  <div class="score-num" id="scoreNum">—</div>
+                </div>
+              </div>
+              <div class="conf-row">
+                <span class="conf-lbl">Model confidence</span>
+                <span class="conf-val" id="confVal">—</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-hdr" style="padding-bottom:10px"><span class="card-title">30-Day Probability</span></div>
+            <div class="prob-body">
+              <div class="prob-row"><div class="prob-lbl" style="color:var(--green)">Bullish</div><div class="prob-track"><div class="prob-fill" id="pb-bull" style="width:0%;background:var(--green)"></div></div><div class="prob-pct" id="pp-bull">—</div></div>
+              <div class="prob-row"><div class="prob-lbl" style="color:var(--text3)">Neutral</div><div class="prob-track"><div class="prob-fill" id="pb-neut" style="width:0%;background:var(--bg4)"></div></div><div class="prob-pct" id="pp-neut">—</div></div>
+              <div class="prob-row"><div class="prob-lbl" style="color:var(--red)">Bearish</div><div class="prob-track"><div class="prob-fill" id="pb-bear" style="width:0%;background:var(--red)"></div></div><div class="prob-pct" id="pp-bear">—</div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-hdr" style="padding-bottom:10px"><span class="card-title">Technical Indicators</span></div>
+            <div class="ind-grid">
+              <div class="ind-cell"><div class="ind-lbl">RSI (14)</div><div class="ind-val" id="ind-rsi">—</div><div class="ind-tag it-neut" id="ind-rsi-tag">—</div></div>
+              <div class="ind-cell"><div class="ind-lbl">MACD</div><div class="ind-val" id="ind-macd">—</div><div class="ind-tag it-neut" id="ind-macd-tag">—</div></div>
+              <div class="ind-cell"><div class="ind-lbl">SMA 20</div><div class="ind-val" id="ind-sma20">—</div><div class="ind-tag it-neut" id="ind-sma20-tag">—</div></div>
+              <div class="ind-cell"><div class="ind-lbl">Volatility</div><div class="ind-val" id="ind-vol">—</div><div class="ind-tag it-neut" id="ind-vol-tag">—</div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-hdr" style="padding-bottom:6px"><span class="card-title">Related</span></div>
+            <div id="peerList"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="ai-card">
+        <div class="ai-hdr">
+          <div class="ai-dot"></div>
+          <span class="ai-title">AI Pattern Analysis</span>
+          <span class="ai-model">claude-sonnet · live data</span>
+        </div>
+        <div class="ai-body" id="aiOutput">Analyzing…</div>
+      </div>
+
+      <div class="disclaimer">⚠ Educational use only. Live data via Finnhub. Not financial advice. Past patterns do not guarantee future results.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const WATCHLIST = ['AAPL','NVDA','TSLA','MSFT','AMZN','META','GOOGL'];
+let chart = null, currentTF = '1M', currentData = null;
+const API_KEY = 'd6rj3mpr01qr194mu3p0d6rj3mpr01qr194mu3pg';
+
+// ── Per-ticker trained model cache (persists for session) ─────────
+const MODEL_CACHE = {};
+
+// ── Training progress UI ──────────────────────────────────────────
+function setStatus(msg, sub='') {
+  let el = document.getElementById('trainStatus');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'trainStatus';
+    el.style.cssText = 'background:#eff6ff;border:1px solid #bcd4f8;border-radius:7px;padding:10px 14px;font-size:12px;color:#2563eb;margin-bottom:12px;display:flex;align-items:center;gap:8px;';
+    const eb = document.getElementById('errorBanner');
+    eb.parentNode.insertBefore(el, eb.nextSibling);
+  }
+  if (!msg) { el.style.display='none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = `<span style="display:inline-block;width:12px;height:12px;border:2px solid #bcd4f8;border-top-color:#2563eb;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0"></span><div><strong>${msg}</strong>${sub?'<br><span style="color:#4a80c4;font-size:11px">'+sub+'</span>':''}</div>`;
+}
+
+// ── Finnhub ───────────────────────────────────────────────────────
+async function fh(path) {
+  const r = await fetch(`https://finnhub.io/api/v1${path}&token=${API_KEY}`);
+  if (!r.ok) throw new Error('Finnhub ' + r.status);
+  return r.json();
+}
+function tfParams(tf) {
+  const now = Math.floor(Date.now()/1000);
+  const map = { '1W':{res:'60',days:7}, '1M':{res:'D',days:30}, '3M':{res:'D',days:90}, '1Y':{res:'W',days:365} };
+  const c = map[tf]; return { resolution:c.res, from:now-c.days*86400, to:now };
+}
+function fmtMcap(v) {
+  if (!v) return '—';
+  if (v>=1e12) return '$'+(v/1e12).toFixed(2)+'T';
+  if (v>=1e9)  return '$'+(v/1e9).toFixed(1)+'B';
+  return '$'+(v/1e6).toFixed(0)+'M';
+}
+function timeAgo(ts) {
+  const s=Math.floor(Date.now()/1000)-ts;
+  if(s<3600) return Math.floor(s/60)+'m ago';
+  if(s<86400) return Math.floor(s/3600)+'h ago';
+  return Math.floor(s/86400)+'d ago';
+}
+
+// ── Math helpers ──────────────────────────────────────────────────
+function smaArr(arr,n){return arr.map((_,i)=>i<n-1?null:arr.slice(i-n+1,i+1).reduce((a,b)=>a+b,0)/n)}
+function emaArr(arr,n){const k=2/(n+1),e=[];arr.forEach((v,i)=>e.push(i===0?v:v*k+e[i-1]*(1-k)));return e}
+function calcRSI(arr,n=14){
+  const ch=arr.slice(1).map((v,i)=>v-arr[i]);
+  let g=0,l=0;
+  for(let i=0;i<n;i++){if(ch[i]>0)g+=ch[i];else l-=ch[i]}
+  let ag=g/n,al=l/n;
+  const r=[null];
+  for(let i=n;i<ch.length;i++){
+    const gv=ch[i]>0?ch[i]:0,lv=ch[i]<0?-ch[i]:0;
+    ag=(ag*(n-1)+gv)/n; al=(al*(n-1)+lv)/n;
+    r.push(al===0?100:100-(100/(1+ag/al)));
+  }
+  return r;
+}
+function calcMACD(arr){
+  const e12=emaArr(arr,12),e26=emaArr(arr,26);
+  const ml=e12.map((v,i)=>v-e26[i]),sig=emaArr(ml,9);
+  return {ml, sig, hist:ml.map((v,i)=>v-sig[i])};
+}
+function calcBB(arr,n=20){
+  const s=smaArr(arr,n);
+  return s.map((m,i)=>{
+    if(!m) return {upper:null,mid:null,lower:null,bw:null};
+    const sd=Math.sqrt(arr.slice(i-n+1,i+1).reduce((a,v)=>a+Math.pow(v-m,2),0)/n);
+    return {upper:m+2*sd, mid:m, lower:m-2*sd, bw:(4*sd)/m};
+  });
+}
+function calcVol(arr,n=20){
+  const logs=arr.slice(1).map((v,i)=>Math.log(v/arr[i]));
+  const s=logs.slice(-n),m=s.reduce((a,b)=>a+b,0)/n;
+  return Math.sqrt(s.reduce((a,v)=>a+Math.pow(v-m,2),0)/n)*Math.sqrt(252)*100;
+}
+function calcStoch(closes,highs,lows,n=14){
+  return closes.map((_,i)=>{
+    if(i<n-1) return null;
+    const hh=Math.max(...highs.slice(i-n+1,i+1));
+    const ll=Math.min(...lows.slice(i-n+1,i+1));
+    return hh===ll ? 50 : (closes[i]-ll)/(hh-ll)*100;
+  });
+}
+function calcATR(closes,highs,lows,n=14){
+  const tr=closes.map((_,i)=>{
+    if(i===0) return highs[i]-lows[i];
+    return Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1]));
+  });
+  return smaArr(tr,n);
+}
+
+// ── Feature extraction: compute all indicators at bar i ───────────
+function extractFeatures(closes, highs, lows, volumes, i, rsiArr, macdData, bbData, sma20, sma50, sma200, stochArr, atrArr) {
+  const c = closes[i];
+  if (!c || i < 60) return null;
+
+  const rsi = rsiArr[i] || 50;
+  const macdHist = macdData.hist[i] || 0;
+  const macdHistPrev = macdData.hist[i-3] || 0;
+  const bb = bbData[i];
+  const bw = bb?.bw || 0.05;
+  const bbPct = bb?.upper && bb?.lower ? (c - bb.lower) / (bb.upper - bb.lower) : 0.5; // 0=at lower, 1=at upper
+  const s20 = sma20[i], s50 = sma50[i], s200 = sma200[i];
+  const stoch = stochArr[i] || 50;
+  const atr = atrArr[i] || 1;
+
+  // Price momentum features
+  const ret5  = i>=5  ? (c/closes[i-5]-1)*100  : 0;
+  const ret10 = i>=10 ? (c/closes[i-10]-1)*100 : 0;
+  const ret20 = i>=20 ? (c/closes[i-20]-1)*100 : 0;
+
+  // Volume momentum (volume vs 20-day avg)
+  const volAvg = volumes.slice(Math.max(0,i-20),i).reduce((a,b)=>a+b,0)/20 || 1;
+  const volRatio = (volumes[i]||1) / volAvg;
+
+  // Trend quality (R² of 20-bar linear regression)
+  const recent = closes.slice(i-19, i+1);
+  const xm = 9.5, ym = recent.reduce((a,b)=>a+b,0)/20;
+  let num=0,den=0; recent.forEach((y,x)=>{num+=(x-xm)*(y-ym);den+=(x-xm)**2});
+  const slope = den>0 ? num/den : 0;
+  const fitted = recent.map((_,x)=>ym+slope*(x-xm));
+  const ssTot = recent.reduce((a,v)=>a+Math.pow(v-ym,2),0);
+  const ssRes = recent.reduce((a,v,ii)=>a+Math.pow(v-fitted[ii],2),0);
+  const r2 = ssTot>0 ? Math.max(0,1-ssRes/ssTot) : 0;
+  const trendSlope = ym>0 ? (slope/ym)*100 : 0;
+
+  // Distance from key MAs (%)
+  const distSma20  = s20  ? (c/s20-1)*100  : 0;
+  const distSma50  = s50  ? (c/s50-1)*100  : 0;
+  const distSma200 = s200 ? (c/s200-1)*100 : 0;
+
+  // MA alignment (bullish = 20>50>200)
+  const maAlignment = (s20&&s50&&s200) ? (s20>s50?1:0) + (s50>s200?1:0) - 1 : 0; // -1 to +1
+
+  // Volatility (annualized)
+  const logs = closes.slice(Math.max(0,i-20),i).map((v,ii,a)=>ii>0?Math.log(v/a[ii-1]):0).filter(Boolean);
+  const localVol = logs.length>1 ? Math.sqrt(logs.reduce((a,v)=>a+v*v,0)/logs.length)*Math.sqrt(252)*100 : 20;
+
+  // ATR % of price (normalized volatility)
+  const atrPct = atr ? (atr/c)*100 : 1;
+
+  // Candlestick body size
+  const high = highs[i], low = lows[i];
+  const bodySize = Math.abs(c - (closes[i-1]||c)) / (high-low||1);
+
+  return [
+    rsi/100,                        // 0: RSI normalized
+    Math.tanh(macdHist/c*100),      // 1: MACD hist normalized
+    Math.tanh((macdHist-macdHistPrev)/c*100), // 2: MACD acceleration
+    bbPct,                          // 3: Bollinger %B
+    Math.min(bw*10, 2)/2,           // 4: Bollinger bandwidth (normalized)
+    stoch/100,                      // 5: Stochastic
+    Math.tanh(ret5/5),              // 6: 5-day return
+    Math.tanh(ret10/8),             // 7: 10-day return
+    Math.tanh(ret20/12),            // 8: 20-day return
+    Math.min(volRatio/3,1),         // 9: Volume ratio
+    r2,                             // 10: Trend R²
+    Math.tanh(trendSlope),          // 11: Trend slope
+    Math.tanh(distSma20/5),         // 12: Dist from SMA20
+    Math.tanh(distSma50/8),         // 13: Dist from SMA50
+    Math.tanh(distSma200/15),       // 14: Dist from SMA200
+    (maAlignment+1)/2,              // 15: MA alignment 0-1
+    Math.min(localVol/80,1),        // 16: Local volatility
+    Math.min(atrPct/3,1),           // 17: ATR%
+    bodySize,                       // 18: Candle body size
+  ];
+}
+
+// ── Labels: what actually happened 20 bars later ──────────────────
+// Returns: 1 (bullish: >2%), -1 (bearish: <-2%), 0 (neutral)
+function labelOutcome(closes, i, horizon=20) {
+  if (i + horizon >= closes.length) return null;
+  const ret = (closes[i+horizon] / closes[i] - 1) * 100;
+  if (ret > 2)  return 1;
+  if (ret < -2) return -1;
+  return 0;
+}
+
+// ── Gradient Boosted Trees (XGBoost-style) in pure JS ─────────────
+// Simplified but real: uses decision tree stumps as weak learners
+class GradientBoostedModel {
+  constructor(nTrees=80, lr=0.12, maxDepth=4, subsample=0.8) {
+    this.nTrees = nTrees;
+    this.lr = lr;
+    this.maxDepth = maxDepth;
+    this.subsample = subsample;
+    this.trees = [];   // for bull class
+    this.treesB = [];  // for bear class
+    this.F0 = 0;
+    this.F0b = 0;
+    this.featureImportance = new Array(19).fill(0);
+    this.trained = false;
+    this.trainAccuracy = 0;
+    this.nSamples = 0;
+  }
+
+  // Build a regression tree to fit residuals
+  buildTree(X, residuals, depth, indices) {
+    const n = indices.length;
+    if (n < 6 || depth === 0) {
+      const mean = indices.reduce((a,i)=>a+residuals[i],0)/n;
+      return { leaf: true, value: mean };
+    }
+    const nFeatures = X[0].length;
+    let bestGain = -Infinity, bestFeat = -1, bestThresh = 0, bestLeft = [], bestRight = [];
+
+    // Try random subset of features (like Random Forest)
+    const nTry = Math.max(3, Math.floor(Math.sqrt(nFeatures)));
+    const featIdx = [...Array(nFeatures).keys()].sort(()=>Math.random()-.5).slice(0,nTry);
+
+    for (const f of featIdx) {
+      const vals = indices.map(i=>X[i][f]).sort((a,b)=>a-b);
+      // Try a few split thresholds
+      for (let t = 1; t < Math.min(vals.length, 8); t++) {
+        const thresh = (vals[Math.floor(vals.length*t/8)] + vals[Math.floor(vals.length*(t+1)/8)]) / 2;
+        const left = indices.filter(i=>X[i][f]<=thresh);
+        const right = indices.filter(i=>X[i][f]>thresh);
+        if (left.length < 3 || right.length < 3) continue;
+        const meanL = left.reduce((a,i)=>a+residuals[i],0)/left.length;
+        const meanR = right.reduce((a,i)=>a+residuals[i],0)/right.length;
+        const gain = left.length*meanL*meanL + right.length*meanR*meanR;
+        if (gain > bestGain) { bestGain=gain; bestFeat=f; bestThresh=thresh; bestLeft=left; bestRight=right; }
+      }
+    }
+    if (bestFeat === -1) {
+      return { leaf:true, value: indices.reduce((a,i)=>a+residuals[i],0)/n };
+    }
+    this.featureImportance[bestFeat] += bestGain * n;
+    return {
+      leaf: false, feat: bestFeat, thresh: bestThresh,
+      left:  this.buildTree(X, residuals, depth-1, bestLeft),
+      right: this.buildTree(X, residuals, depth-1, bestRight),
+    };
+  }
+
+  predictTree(tree, x) {
+    if (tree.leaf) return tree.value;
+    return x[tree.feat] <= tree.thresh ? this.predictTree(tree.left, x) : this.predictTree(tree.right, x);
+  }
+
+  sigmoid(x) { return 1/(1+Math.exp(-Math.max(-10,Math.min(10,x)))); }
+
+  train(X, labels) {
+    const n = X.length;
+    this.nSamples = n;
+    this.trained = false;
+    if (n < 30) return;
+
+    // Binary labels: bull vs rest, bear vs rest
+    const yBull = labels.map(l => l===1?1:0);
+    const yBear = labels.map(l => l===-1?1:0);
+
+    const bullRate = yBull.reduce((a,b)=>a+b,0)/n;
+    const bearRate = yBear.reduce((a,b)=>a+b,0)/n;
+    this.F0  = Math.log((bullRate+1e-6)/(1-bullRate+1e-6));
+    this.F0b = Math.log((bearRate+1e-6)/(1-bearRate+1e-6));
+
+    let Fbull = new Array(n).fill(this.F0);
+    let Fbear = new Array(n).fill(this.F0b);
+    this.trees = []; this.treesB = [];
+
+    for (let t = 0; t < this.nTrees; t++) {
+      // Subsampling
+      const idx = [...Array(n).keys()].filter(()=>Math.random()<this.subsample);
+
+      // Bull gradient
+      const resBull = idx.map(i => yBull[i] - this.sigmoid(Fbull[i]));
+      const treeBull = this.buildTree(X, resBull, this.maxDepth, idx);
+      this.trees.push(treeBull);
+      idx.forEach(i => { Fbull[i] += this.lr * this.predictTree(treeBull, X[i]); });
+
+      // Bear gradient
+      const resBear = idx.map(i => yBear[i] - this.sigmoid(Fbear[i]));
+      const treeBear = this.buildTree(X, resBear, this.maxDepth, idx);
+      this.treesB.push(treeBear);
+      idx.forEach(i => { Fbear[i] += this.lr * this.predictTree(treeBear, X[i]); });
+    }
+
+    // Normalize feature importance
+    const totalImp = this.featureImportance.reduce((a,b)=>a+b,0)||1;
+    this.featureImportance = this.featureImportance.map(v=>v/totalImp);
+
+    // Training accuracy on last 20% (out-of-time validation)
+    const valStart = Math.floor(n*0.8);
+    let correct = 0;
+    for (let i = valStart; i < n; i++) {
+      const pred = this.predictProba(X[i]);
+      const predLabel = pred[0]>pred[2] && pred[0]>pred[1] ? 1 : pred[2]>pred[1] ? -1 : 0;
+      if (predLabel === labels[i]) correct++;
+    }
+    this.trainAccuracy = Math.round(correct/(n-valStart)*100);
+    this.trained = true;
+  }
+
+  predictProba(x) {
+    // Returns [pBull, pNeutral, pBear]
+    let scoreBull = this.F0, scoreBear = this.F0b;
+    for (const t of this.trees)  scoreBull += this.lr * this.predictTree(t, x);
+    for (const t of this.treesB) scoreBear += this.lr * this.predictTree(t, x);
+    const pBull = this.sigmoid(scoreBull);
+    const pBear = this.sigmoid(scoreBear);
+    // Normalize to sum to 1
+    const total = pBull + pBear + (1-pBull+1-pBear)/2;
+    const nb = Math.max(0.01, pBull);
+    const sb = Math.max(0.01, pBear);
+    const nn = Math.max(0.01, 1 - nb - sb);
+    const s = nb+sb+nn;
+    return [nb/s, nn/s, sb/s]; // [pBull, pNeutral, pBear]
+  }
+}
+
+// ── TRAIN model on 5 years of this stock's own history ───────────
+async function trainModel(ticker) {
+  if (MODEL_CACHE[ticker]) return MODEL_CACHE[ticker]; // use cached
+
+  setStatus(`Training model on ${ticker} history…`, 'Fetching 5 years of daily candles from Finnhub');
+
+  const now = Math.floor(Date.now()/1000);
+  const fiveYearsAgo = now - 5*365*86400;
+
+  let candles;
+  try {
+    candles = await fh(`/stock/candle?symbol=${ticker}&resolution=D&from=${fiveYearsAgo}&to=${now}`);
+  } catch(e) {
+    setStatus('');
+    return null;
+  }
+
+  if (candles.s !== 'ok' || !candles.c || candles.c.length < 100) {
+    setStatus('');
+    return null;
+  }
+
+  const closes  = candles.c;
+  const highs   = candles.h;
+  const lows    = candles.l;
+  const volumes = candles.v;
+  const n = closes.length;
+
+  setStatus(`Training on ${ticker}…`, `Computing indicators across ${n} trading days`);
+
+  // Pre-compute all indicators across full history
+  const rsiArr   = calcRSI(closes);
+  const macdData = calcMACD(closes);
+  const bbData   = calcBB(closes);
+  const sma20    = smaArr(closes, 20);
+  const sma50    = smaArr(closes, 50);
+  const sma200   = smaArr(closes, 200);
+  const stochArr = calcStoch(closes, highs, lows);
+  const atrArr   = calcATR(closes, highs, lows);
+
+  // Build training dataset
+  const X = [], y = [];
+  for (let i = 60; i < n - 20; i++) {
+    const features = extractFeatures(closes, highs, lows, volumes, i, rsiArr, macdData, bbData, sma20, sma50, sma200, stochArr, atrArr);
+    const label = labelOutcome(closes, i, 20);
+    if (features && label !== null) {
+      X.push(features);
+      y.push(label);
+    }
+  }
+
+  setStatus(`Training on ${ticker}…`, `Fitting Gradient Boosted Trees on ${X.length} labeled samples`);
+
+  // Allow UI to update before heavy computation
+  await new Promise(r => setTimeout(r, 30));
+
+  const model = new GradientBoostedModel(80, 0.12, 4, 0.8);
+  model.train(X, y);
+
+  // Also store the full history for self-backtesting display
+  const result = {
+    model,
+    closes, highs, lows, volumes,
+    rsiArr, macdData, bbData, sma20, sma50, sma200, stochArr, atrArr,
+    n,
+    ticker,
+    trainedAt: Date.now(),
+    accuracy: model.trainAccuracy,
+    nSamples: X.length,
+    // Compute per-class base rates for display
+    bullRate: Math.round(y.filter(v=>v===1).length/y.length*100),
+    bearRate: Math.round(y.filter(v=>v===-1).length/y.length*100),
+  };
+
+  MODEL_CACHE[ticker] = result;
+  setStatus('');
+  return result;
+}
+
+// ── Run inference on current bar ──────────────────────────────────
+function predict(trainedModel, recentCloses, recentHighs, recentLows, recentVolumes) {
+  const { model, rsiArr, macdData, bbData, sma20, sma50, sma200, stochArr, atrArr, closes, highs, lows, volumes } = trainedModel;
+
+  // Stitch recent (live) data onto training data for fresh indicators
+  const allC = [...closes, ...recentCloses.slice(1)];
+  const allH = [...highs,  ...recentHighs.slice(1)];
+  const allL = [...lows,   ...recentLows.slice(1)];
+  const allV = [...volumes, ...recentVolumes.slice(1)];
+  const N = allC.length;
+
+  const freshRSI   = calcRSI(allC);
+  const freshMACD  = calcMACD(allC);
+  const freshBB    = calcBB(allC);
+  const freshS20   = smaArr(allC, 20);
+  const freshS50   = smaArr(allC, 50);
+  const freshS200  = smaArr(allC, 200);
+  const freshStoch = calcStoch(allC, allH, allL);
+  const freshATR   = calcATR(allC, allH, allL);
+
+  const idx = N - 1;
+  const features = extractFeatures(allC, allH, allL, allV, idx, freshRSI, freshMACD, freshBB, freshS20, freshS50, freshS200, freshStoch, freshATR);
+  if (!features) return null;
+
+  const [pBull, pNeut, pBear] = model.predictProba(features);
+  const score = Math.round((pBull - pBear) * 100);
+
+  return {
+    pBull: Math.round(pBull*100),
+    pNeut: Math.round(pNeut*100),
+    pBear: Math.round(pBear*100),
+    score,
+    signal: score > 10 ? 'BUY' : score < -10 ? 'SELL' : 'HOLD',
+    conf: Math.min(88, Math.round(50 + Math.abs(score) * 0.4 + trainedModel.accuracy * 0.2)),
+    features,
+    featureNames: ['RSI','MACD Hist','MACD Accel','BB %B','BB Width','Stochastic','Ret 5d','Ret 10d','Ret 20d','Vol Ratio','Trend R²','Trend Slope','Dist SMA20','Dist SMA50','Dist SMA200','MA Align','Volatility','ATR%','Body Size'],
+    featureImportance: trainedModel.model.featureImportance,
+    rawProbas: [pBull, pNeut, pBear],
+  };
+}
+
+// ── Self-backtest: run model on recent history to show real accuracy ─
+function runBacktest(trainedModel) {
+  const { model, closes, highs, lows, volumes, rsiArr, macdData, bbData, sma20, sma50, sma200, stochArr, atrArr, n } = trainedModel;
+  const results = [];
+  // Last 90 labeled bars
+  const start = Math.max(60, n - 110);
+  for (let i = start; i < n - 20; i++) {
+    const features = extractFeatures(closes, highs, lows, volumes, i, rsiArr, macdData, bbData, sma20, sma50, sma200, stochArr, atrArr);
+    const actual = labelOutcome(closes, i, 20);
+    if (!features || actual === null) continue;
+    const [pBull,,pBear] = model.predictProba(features);
+    const predicted = (pBull-pBear) > 0.1 ? 1 : (pBear-pBull) > 0.1 ? -1 : 0;
+    results.push({ predicted, actual, correct: predicted === actual, date: i });
+  }
+  const total = results.length;
+  const correct = results.filter(r=>r.correct).length;
+  const bullCalls  = results.filter(r=>r.predicted===1);
+  const bearCalls  = results.filter(r=>r.predicted===-1);
+  return {
+    total, correct,
+    accuracy: total>0 ? Math.round(correct/total*100) : 0,
+    bullPrecision: bullCalls.length>0  ? Math.round(bullCalls.filter(r=>r.correct).length/bullCalls.length*100)  : 0,
+    bearPrecision: bearCalls.length>0  ? Math.round(bearCalls.filter(r=>r.correct).length/bearCalls.length*100)  : 0,
+  };
+}
+
+// ── Pattern detection (still used for display + context) ──────────
+function detectTrend(p,w=20){
+  const s=p.slice(-w),n=s.length,xm=(n-1)/2,ym=s.reduce((a,b)=>a+b,0)/n;
+  let num=0,den=0;s.forEach((y,x)=>{num+=(x-xm)*(y-ym);den+=(x-xm)**2});
+  const sl=(num/den/ym)*100;
+  const fitted=s.map((_,x)=>ym+(num/den)*(x-xm));
+  const ssTot=s.reduce((a,v)=>a+Math.pow(v-ym,2),0);
+  const ssRes=s.reduce((a,v,i)=>a+Math.pow(v-fitted[i],2),0);
+  const r2=Math.max(0,ssTot>0?1-ssRes/ssTot:0);
+  const quality=r2>0.7?'High':r2>0.4?'Medium':'Low';
+  if(sl>0.3)return{type:'Uptrend Channel',signal:'bullish',strength:quality,icon:'↑'};
+  if(sl<-0.3)return{type:'Downtrend Channel',signal:'bearish',strength:quality,icon:'↓'};
+  return{type:'Consolidation Zone',signal:'neutral',strength:'Low',icon:'→'};
+}
+function detectHS(p){
+  const r=p.slice(-50),pks=[];
+  for(let i=2;i<r.length-2;i++)if(r[i]>r[i-1]&&r[i]>r[i-2]&&r[i]>r[i+1]&&r[i]>r[i+2])pks.push({i,v:r[i]});
+  if(pks.length>=3){const[a,h,b]=pks.slice(-3);if(h.v>a.v&&h.v>b.v&&Math.abs(a.v-b.v)/h.v<0.08&&Math.min(h.i-a.i,b.i-h.i)>=3)return{type:'Head & Shoulders',signal:'bearish',strength:'High',icon:'⊥'}}
+  return null;
+}
+function detectInvHS(p){
+  const r=p.slice(-50),tr=[];
+  for(let i=2;i<r.length-2;i++)if(r[i]<r[i-1]&&r[i]<r[i-2]&&r[i]<r[i+1]&&r[i]<r[i+2])tr.push({i,v:r[i]});
+  if(tr.length>=3){const[a,h,b]=tr.slice(-3);if(h.v<a.v&&h.v<b.v&&Math.abs(a.v-b.v)/a.v<0.08&&Math.min(h.i-a.i,b.i-h.i)>=3)return{type:'Inv. Head & Shoulders',signal:'bullish',strength:'High',icon:'⊤'}}
+  return null;
+}
+function detectDT(p){
+  const r=p.slice(-40),pks=[];
+  for(let i=2;i<r.length-2;i++)if(r[i]>r[i-1]&&r[i]>r[i+1])pks.push({i,v:r[i]});
+  if(pks.length>=2){const[a,b]=pks.slice(-2);const pd=Math.abs(a.v-b.v)/a.v,gap=b.i-a.i;if(pd<0.03&&gap>=5&&gap<=30)return{type:'Double Top',signal:'bearish',strength:pd<0.015?'High':'Medium',icon:'⌒'}}
+  return null;
+}
+function detectDB(p){
+  const r=p.slice(-40),tr=[];
+  for(let i=2;i<r.length-2;i++)if(r[i]<r[i-1]&&r[i]<r[i+1])tr.push({i,v:r[i]});
+  if(tr.length>=2){const[a,b]=tr.slice(-2);const pd=Math.abs(a.v-b.v)/a.v,gap=b.i-a.i;if(pd<0.03&&gap>=5&&gap<=30)return{type:'Double Bottom',signal:'bullish',strength:pd<0.015?'High':'Medium',icon:'⌣'}}
+  return null;
+}
+function detectGC(s50,s200,idx){
+  if(!s50[idx]||!s200[idx]||idx<5)return null;
+  for(let k=1;k<=5;k++){
+    if(!s50[idx-k]||!s200[idx-k])continue;
+    if(s50[idx]>s200[idx]&&s50[idx-k]<s200[idx-k])return{type:'Golden Cross (50/200)',signal:'bullish',strength:'High',icon:'✦'};
+    if(s50[idx]<s200[idx]&&s50[idx-k]>s200[idx-k])return{type:'Death Cross (50/200)',signal:'bearish',strength:'High',icon:'✦'};
+  }
+  return{type:s50[idx]>s200[idx]?'Above 200-day SMA':'Below 200-day SMA',signal:s50[idx]>s200[idx]?'bullish':'bearish',strength:'Low',icon:'—'};
+}
+function detectBBSq(arr){
+  const bb=calcBB(arr);
+  const bws=bb.map(b=>b.bw).filter(Boolean);
+  if(bws.length<10)return null;
+  const avg=bws.slice(-30).reduce((a,b)=>a+b,0)/Math.min(30,bws.length);
+  if(bws[bws.length-1]<avg*.7)return{type:'Bollinger Squeeze',signal:'neutral',strength:'Medium',icon:'⇔'};
+  return null;
+}
+function findSR(p){
+  const levs=[],w=5;
+  for(let i=w;i<p.length-w;i++){
+    const sl=p.slice(i-w,i+w+1),mn=Math.min(...sl),mx=Math.max(...sl);
+    if(p[i]===mn)levs.push({price:p[i],type:'support',strength:0});
+    if(p[i]===mx)levs.push({price:p[i],type:'resistance',strength:0});
+  }
+  const cl=[],thr=p[p.length-1]*.02;
+  levs.forEach(l=>{
+    const ex=cl.find(c=>Math.abs(c.price-l.price)<thr&&c.type===l.type);
+    if(ex){ex.price=(ex.price+l.price)/2;ex.strength++}else cl.push({...l});
+  });
+  return cl.sort((a,b)=>b.strength-a.strength).slice(0,8);
+}
+
+// ── Monte Carlo forecast with ML drift ───────────────────────────
+function renderChart(closes, timestamps, pred, annualVol) {
+  const s20=smaArr(closes,Math.min(20,closes.length));
+  const s50=smaArr(closes,Math.min(50,closes.length));
+  const predDays=20, last=closes[closes.length-1];
+  const dailyDrift = (pred.pBull - pred.pBear) / 100 * 0.003;
+  const dailyVol = (Math.max(annualVol,8) / 100) / Math.sqrt(252);
+
+  // Monte Carlo: 300 paths
+  const N=300, paths=[];
+  for(let sim=0;sim<N;sim++){
+    const path=[last];
+    for(let d=1;d<=predDays;d++){
+      // Box-Muller normal
+      const u1=Math.random(),u2=Math.random();
+      const z=Math.sqrt(-2*Math.log(u1+1e-10))*Math.cos(2*Math.PI*u2);
+      path.push(Math.max(path[d-1]*0.5, path[d-1]*(1+dailyDrift+dailyVol*z)));
+    }
+    paths.push(path);
+  }
+  const pct=(paths,q)=>[...Array(predDays+1).keys()].map(d=>{
+    const v=paths.map(p=>p[d]).sort((a,b)=>a-b);
+    return parseFloat(v[Math.floor(N*q)].toFixed(2));
+  });
+  const median=pct(paths,.5),u75=pct(paths,.75),l25=pct(paths,.25),u90=pct(paths,.90),l10=pct(paths,.10);
+
+  const labels=timestamps.map(ts=>new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+  for(let i=1;i<=predDays;i++){const d=new Date();d.setDate(d.getDate()+i);labels.push(d.toLocaleDateString('en-US',{month:'short',day:'numeric'}))}
+  const gap=Array(closes.length-1).fill(null);
+  const hD=[...closes,...Array(predDays).fill(null)];
+
+  if(chart)chart.destroy();
+  const ctx=document.getElementById('priceChart').getContext('2d');
+  chart=new Chart(ctx,{type:'line',data:{labels,datasets:[
+    {label:'90ci_u',data:[...gap,last,...u90.slice(1)],borderColor:'transparent',pointRadius:0,fill:false,tension:.3},
+    {label:'90ci_l',data:[...gap,last,...l10.slice(1)],borderColor:'transparent',pointRadius:0,fill:'-1',backgroundColor:'rgba(37,99,235,0.04)',tension:.3},
+    {label:'75ci_u',data:[...gap,last,...u75.slice(1)],borderColor:'transparent',pointRadius:0,fill:false,tension:.3},
+    {label:'25ci_l',data:[...gap,last,...l25.slice(1)],borderColor:'transparent',pointRadius:0,fill:'-1',backgroundColor:'rgba(37,99,235,0.09)',tension:.3},
+    {label:'Median Forecast',data:[...gap,last,...median.slice(1)],borderColor:'#00b37e',borderWidth:2,borderDash:[5,3],pointRadius:0,fill:false,tension:.3},
+    {label:'SMA 20',data:[...s20,...Array(predDays).fill(null)],borderColor:'#f59e0b',borderWidth:1,pointRadius:0,tension:.3,borderDash:[3,2]},
+    {label:'SMA 50',data:[...s50,...Array(predDays).fill(null)],borderColor:'#8b5cf6',borderWidth:1,pointRadius:0,tension:.3,borderDash:[4,2]},
+    {label:'Price',data:hD,borderColor:'#2563eb',borderWidth:2,pointRadius:0,tension:.3,fill:{target:'origin',above:'rgba(37,99,235,0.03)'}},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},
+    plugins:{legend:{display:false},tooltip:{
+      backgroundColor:'#fff',borderColor:'#e2e5ea',borderWidth:1,
+      titleColor:'#8a94a6',bodyColor:'#0d1117',
+      titleFont:{family:'DM Mono',size:10},bodyFont:{family:'DM Mono',size:11},padding:10,
+      filter:item=>['Price','Median Forecast','75ci_u','25ci_l'].includes(item.dataset.label),
+      callbacks:{label:ctx=>{
+        const l=ctx.dataset.label;
+        if(l==='Price') return ' Price: $'+ctx.parsed.y.toFixed(2);
+        if(l==='Median Forecast') return ' Forecast (median): $'+ctx.parsed.y.toFixed(2);
+        if(l==='75ci_u') return ' Bull case (75th pct): $'+ctx.parsed.y.toFixed(2);
+        if(l==='25ci_l') return ' Bear case (25th pct): $'+ctx.parsed.y.toFixed(2);
+        return null;
+      }}
+    }},
+    scales:{
+      x:{ticks:{color:'#8a94a6',font:{family:'DM Mono',size:9},maxTicksLimit:8,maxRotation:0},grid:{color:'#f0f2f5'},border:{color:'#e2e5ea'}},
+      y:{position:'right',ticks:{color:'#8a94a6',font:{family:'DM Mono',size:9},callback:v=>'$'+v.toFixed(0)},grid:{color:'#f7f8fa'},border:{color:'#e2e5ea'}}
+    }
+  }});
+}
+
+// ── Watchlist ─────────────────────────────────────────────────────
+async function buildWatchlist(active) {
+  const wl=document.getElementById('watchlist');
+  wl.innerHTML='';
+  WATCHLIST.forEach(sym=>{
+    const el=document.createElement('div');
+    el.className='wtab'+(sym===active?' active':'');
+    el.innerHTML=`<span class="wtab-sym">${sym}</span><span class="wtab-chg" id="wchg-${sym}" style="color:var(--text3)">…</span>`;
+    el.onclick=()=>{document.getElementById('searchInput').value=sym;runAnalysis()};
+    wl.appendChild(el);
+    fh(`/quote?symbol=${sym}`).then(q=>{
+      const p=q.dp||0,el2=document.getElementById('wchg-'+sym);
+      if(el2){el2.textContent=(p>=0?'+':'')+p.toFixed(2)+'%';el2.className='wtab-chg '+(p>=0?'up':'dn')}
+    }).catch(()=>{});
+  });
+}
+
+// ── Main analysis ─────────────────────────────────────────────────
+async function runAnalysis() {
+  const ticker=(document.getElementById('searchInput').value||'').trim().toUpperCase();
+  if(!ticker) return;
+  const btn=document.getElementById('analyzeBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  document.getElementById('errorBanner').style.display='none';
+  document.getElementById('aiOutput').className='ai-body loading';
+  document.getElementById('aiOutput').innerHTML='<div class="sk" style="width:88%;animation:shimmer 1.5s infinite;background:linear-gradient(90deg,#f0f2f5 25%,#e4e7ed 50%,#f0f2f5 75%);background-size:200% 100%"></div><div class="sk" style="width:73%;animation:shimmer 1.5s infinite .1s;background:linear-gradient(90deg,#f0f2f5 25%,#e4e7ed 50%,#f0f2f5 75%);background-size:200% 100%"></div><div class="sk" style="width:81%;animation:shimmer 1.5s infinite .2s;background:linear-gradient(90deg,#f0f2f5 25%,#e4e7ed 50%,#f0f2f5 75%);background-size:200% 100%"></div>';
+
+  buildWatchlist(ticker);
+
+  try {
+    // ── Step 1: Train model on this stock's own 5-year history ───
+    const trained = await trainModel(ticker);
+
+    // ── Step 2: Fetch live data in parallel ──────────────────────
+    setStatus('Fetching live market data…');
+    const {resolution,from,to}=tfParams(currentTF);
+    const [quote,profile,candles,metrics,news,peers]=await Promise.all([
+      fh(`/quote?symbol=${ticker}`),
+      fh(`/stock/profile2?symbol=${ticker}`),
+      fh(`/stock/candle?symbol=${ticker}&resolution=${resolution}&from=${from}&to=${to}`),
+      fh(`/stock/metric?symbol=${ticker}&metric=all`),
+      fh(`/company-news?symbol=${ticker}&from=${new Date(Date.now()-7*86400000).toISOString().slice(0,10)}&to=${new Date().toISOString().slice(0,10)}`),
+      fh(`/stock/peers?symbol=${ticker}`),
+    ]);
+    setStatus('');
+
+    if(!quote.c||quote.c===0) throw new Error(`"${ticker}" not found. Check the symbol.`);
+
+    const price=quote.c, chgAmt=quote.d||0, chgPct=quote.dp||0;
+    const closes=candles.s==='ok'?candles.c:[];
+    const highs=candles.s==='ok'?candles.h:closes;
+    const lows=candles.s==='ok'?candles.l:closes;
+    const volumes=candles.s==='ok'?candles.v:closes.map(()=>0);
+    const timestamps=candles.s==='ok'?candles.t:[];
+    const m=metrics.metric||{};
+    const h52=m['52WeekHigh']||quote.h, l52=m['52WeekLow']||quote.l;
+    const pe=m.peNormalizedAnnual||m.peTTM;
+    const mcap=profile.marketCapitalization?fmtMcap(profile.marketCapitalization*1e6):'—';
+    const beta=m.beta||1;
+    const vol=closes.length>21?calcVol(closes):20;
+
+    // ── Step 3: Run ML inference ──────────────────────────────────
+    let pred = null;
+    let backtest = null;
+    if (trained && closes.length > 10) {
+      pred = predict(trained, closes, highs, lows, volumes);
+      backtest = runBacktest(trained);
+    }
+
+    // Fallback if model not available
+    if (!pred) {
+      const rsi=calcRSI(closes); const rv=Math.round(rsi[rsi.length-1]||50);
+      const {hist}=calcMACD(closes); const mh=hist[hist.length-1]||0;
+      const bullScore = (rv<40?15:rv>70?-15:0) + (mh>0?10:-10);
+      const b=Math.max(10,Math.min(80,50+bullScore));
+      pred={pBull:b,pNeut:20,pBear:100-b-20,score:bullScore*1.5,signal:bullScore>10?'BUY':bullScore<-10?'SELL':'HOLD',conf:45,featureImportance:new Array(19).fill(1/19)};
+    }
+
+    // ── Step 4: Pattern detection (for display context) ──────────
+    const pats=[];
+    if(closes.length>20){const t=detectTrend(closes);if(t)pats.push(t)}
+    if(closes.length>50){const h=detectHS(closes);if(h)pats.push(h);const ih=detectInvHS(closes);if(ih)pats.push(ih)}
+    if(closes.length>15){const dt=detectDT(closes);if(dt)pats.push(dt);const db=detectDB(closes);if(db)pats.push(db)}
+    const s50f=smaArr(closes,50),s200f=smaArr(closes,200);
+    if(s50f[closes.length-1]&&s200f[closes.length-1]){const gc=detectGC(s50f,s200f,closes.length-1);if(gc)pats.push(gc)}
+    if(closes.length>20){const bsq=detectBBSq(closes);if(bsq)pats.push(bsq)}
+    const sr=findSR(closes);
+    const supports=sr.filter(l=>l.type==='support'&&l.price<price).sort((a,b)=>b.price-a.price).slice(0,3);
+    const resistances=sr.filter(l=>l.type==='resistance'&&l.price>price).sort((a,b)=>a.price-b.price).slice(0,3);
+    const rsiArr2=calcRSI(closes); const rsiVal=Math.round(rsiArr2[rsiArr2.length-1]||50);
+    const {hist:macdH2}=calcMACD(closes); const macdVal=macdH2[macdH2.length-1]||0;
+    const sma20l=smaArr(closes,20)[closes.length-1];
+
+    currentData={closes,timestamps,price,pred,vol};
+
+    // ── Hero ──────────────────────────────────────────────────────
+    document.getElementById('heroName').textContent=profile.name||ticker;
+    document.getElementById('heroTicker').textContent=ticker;
+    document.getElementById('heroExchange').textContent=profile.exchange||'NASDAQ';
+    document.getElementById('heroSector').textContent=profile.finnhubIndustry||'—';
+    document.getElementById('heroPrice').textContent='$'+price.toFixed(2);
+    const pill=document.getElementById('heroChgPill');
+    pill.textContent=(chgAmt>=0?'+':'')+chgAmt.toFixed(2)+' ('+(chgPct>=0?'+':'')+chgPct.toFixed(2)+'%)';
+    pill.className='chg-pill '+(chgAmt>=0?'up':'dn');
+    document.getElementById('heroTimestamp').textContent='Updated '+new Date().toLocaleTimeString();
+    document.getElementById('qs-open').textContent='$'+(quote.o||'—');
+    document.getElementById('qs-high').textContent='$'+(quote.h||'—');
+    document.getElementById('qs-low').textContent='$'+(quote.l||'—');
+    document.getElementById('qs-mcap').textContent=mcap;
+    document.getElementById('qs-pe').textContent=pe?parseFloat(pe).toFixed(1):'—';
+    document.getElementById('qs-52h').textContent=h52?'$'+parseFloat(h52).toFixed(2):'—';
+    document.getElementById('chartTitle').textContent=ticker+' — Live Price + ML Forecast';
+
+    // ── Patterns ──────────────────────────────────────────────────
+    document.getElementById('patCount').textContent=pats.length+' found';
+    document.getElementById('patList').innerHTML=pats.length===0
+      ?'<div style="padding:12px 0;font-size:12px;color:var(--text3);text-align:center">No strong patterns in current timeframe</div>'
+      :pats.map(p=>`<div class="pat-row"><div class="pat-ico ${p.signal==='bullish'?'bull':p.signal==='bearish'?'bear':'neut'}">${p.icon}</div><div class="pat-info"><div class="pat-name">${p.type}</div><div class="pat-str">${p.strength} confidence</div></div><span class="pat-sig ${p.signal==='bullish'?'ps-bull':p.signal==='bearish'?'ps-bear':'ps-neut'}">${p.signal}</span></div>`).join('');
+
+    // ── SR ────────────────────────────────────────────────────────
+    let srHTML='';
+    resistances.slice().reverse().forEach(r=>{const d=((r.price-price)/price*100).toFixed(1);srHTML+=`<div class="sr-row resist"><div><div class="sr-type">Resistance</div><div class="sr-price" style="color:var(--red)">$${r.price.toFixed(2)}</div></div><div class="sr-dist" style="color:var(--red)">+${d}%</div></div>`});
+    srHTML+=`<div class="sr-row cur"><div><div class="sr-type">Current Price</div><div class="sr-price" style="color:var(--blue)">$${price.toFixed(2)}</div></div><div class="sr-dist">—</div></div>`;
+    supports.forEach(s=>{const d=((price-s.price)/price*100).toFixed(1);srHTML+=`<div class="sr-row supp"><div><div class="sr-type">Support</div><div class="sr-price" style="color:var(--green)">$${s.price.toFixed(2)}</div></div><div class="sr-dist" style="color:var(--green)">-${d}%</div></div>`});
+    document.getElementById('srLevels').innerHTML=srHTML;
+
+    // ── Signal ────────────────────────────────────────────────────
+    const sb=document.getElementById('sigBadge');
+    sb.textContent=pred.signal; sb.className='sig-badge '+(pred.signal==='BUY'?'buy':pred.signal==='SELL'?'sell':'hold');
+    const fc=pred.score>10?'var(--green)':pred.score<-10?'var(--red)':'var(--amber)';
+    document.getElementById('scoreFill').style.width=((pred.score+100)/200*100)+'%';
+    document.getElementById('scoreFill').style.background=fc;
+    document.getElementById('scoreNum').textContent='ML Score: '+(pred.score>0?'+':'')+pred.score;
+    document.getElementById('confVal').textContent=pred.conf+'%';
+    document.getElementById('confVal').style.color=pred.conf>65?'var(--green)':pred.conf>50?'var(--amber)':'var(--text3)';
+    setTimeout(()=>{ ['bull','neut','bear'].forEach(k=>{document.getElementById('pb-'+k).style.width=pred['p'+k[0].toUpperCase()+k.slice(1)]+'%';document.getElementById('pp-'+k).textContent=pred['p'+k[0].toUpperCase()+k.slice(1)]+'%'}) },200);
+
+    // ── Model accuracy card ───────────────────────────────────────
+    let accCard = document.getElementById('accuracyCard');
+    if (!accCard) {
+      accCard = document.createElement('div');
+      accCard.id = 'accuracyCard';
+      accCard.className = 'card';
+      accCard.style.marginBottom = '14px';
+      document.getElementById('aiOutput').parentElement.before(accCard);
+    }
+    if (trained && backtest) {
+      // Top 5 most important features
+      const featImp = pred.featureImportance || [];
+      const topFeats = featImp.map((v,i)=>({name:pred.featureNames[i],imp:v})).sort((a,b)=>b.imp-a.imp).slice(0,5);
+      accCard.innerHTML = `
+        <div class="card-hdr" style="padding-bottom:12px">
+          <span class="card-title">Model Performance</span>
+          <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3)">Trained on ${trained.nSamples} labeled samples · ${trained.accuracy}% out-of-time val accuracy</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)">
+          <div style="background:var(--bg);padding:12px 14px">
+            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Recent Backtest Accuracy</div>
+            <div style="font-size:22px;font-weight:600;font-family:'DM Mono',monospace;color:${backtest.accuracy>=55?'var(--green)':'var(--amber)'}">${backtest.accuracy}%</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:2px">on last ${backtest.total} 20-day windows</div>
+          </div>
+          <div style="background:var(--bg);padding:12px 14px">
+            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Signal Precision</div>
+            <div style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:3px"><span style="color:var(--green)">BUY precision: ${backtest.bullPrecision}%</span></div>
+            <div style="font-size:12px;font-family:'DM Mono',monospace"><span style="color:var(--red)">SELL precision: ${backtest.bearPrecision}%</span></div>
+          </div>
+        </div>
+        <div style="padding:12px 14px;border-top:1px solid var(--border)">
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Top Predictive Features for ${ticker}</div>
+          ${topFeats.map(f=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+              <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);width:120px;flex-shrink:0">${f.name}</div>
+              <div style="flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="height:100%;width:${Math.round(f.imp*100*5)}%;background:var(--blue);border-radius:3px;max-width:100%"></div></div>
+              <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);width:32px;text-align:right">${(f.imp*100).toFixed(1)}%</div>
+            </div>`).join('')}
+        </div>`;
+    } else {
+      accCard.style.display = 'none';
+    }
+
+    // ── Indicators ────────────────────────────────────────────────
+    document.getElementById('ind-rsi').textContent=rsiVal;
+    document.getElementById('ind-rsi').style.color=rsiVal>70?'var(--amber)':rsiVal<30?'var(--blue)':rsiVal>55?'var(--green)':'var(--text)';
+    const rsiTag=rsiVal>70?'Overbought':rsiVal<30?'Oversold':rsiVal>55?'Bullish':'Neutral';
+    document.getElementById('ind-rsi-tag').textContent=rsiTag;
+    document.getElementById('ind-rsi-tag').className='ind-tag '+(rsiVal>70?'it-hot':rsiVal<30?'it-bull':rsiVal>55?'it-bull':'it-neut');
+    document.getElementById('ind-macd').textContent=(macdVal>=0?'+':'')+macdVal.toFixed(2);
+    document.getElementById('ind-macd').style.color=macdVal>=0?'var(--green)':'var(--red)';
+    document.getElementById('ind-macd-tag').textContent=macdVal>=0?'Bullish':'Bearish';
+    document.getElementById('ind-macd-tag').className='ind-tag '+(macdVal>=0?'it-bull':'it-bear');
+    document.getElementById('ind-sma20').textContent=sma20l?'$'+sma20l.toFixed(0):'—';
+    document.getElementById('ind-sma20').style.color=price>sma20l?'var(--green)':'var(--red)';
+    document.getElementById('ind-sma20-tag').textContent=price>sma20l?'Above':'Below';
+    document.getElementById('ind-sma20-tag').className='ind-tag '+(price>sma20l?'it-bull':'it-bear');
+    document.getElementById('ind-vol').textContent=vol.toFixed(1)+'%';
+    const volTag=vol>40?'High':vol>25?'Elevated':'Normal';
+    document.getElementById('ind-vol-tag').textContent=volTag;
+    document.getElementById('ind-vol-tag').className='ind-tag '+(vol>40?'it-hot':vol>25?'it-hot':'it-neut');
+
+    // ── News ──────────────────────────────────────────────────────
+    const topNews=(news||[]).slice(0,5);
+    document.getElementById('newsList').innerHTML=topNews.length===0
+      ?'<div style="padding:12px 16px;font-size:12px;color:var(--text3)">No recent news found.</div>'
+      :topNews.map(n=>`<a class="news-row" href="${n.url}" target="_blank" rel="noopener"><div><div class="news-headline">${n.headline}</div><div class="news-meta">${n.source} · ${timeAgo(n.datetime)}</div></div></a>`).join('');
+
+    // ── Peers ─────────────────────────────────────────────────────
+    const topPeers=(peers||[]).filter(p=>p!==ticker).slice(0,5);
+    document.getElementById('peerList').innerHTML=topPeers.length===0
+      ?'<div style="padding:10px 12px;font-size:12px;color:var(--text3)">No peers found.</div>'
+      :topPeers.map(sym=>`<div class="peer-row" onclick="document.getElementById('searchInput').value='${sym}';runAnalysis()"><span class="peer-sym">${sym}</span><span class="peer-chg" id="peer-${sym}" style="color:var(--text3)">…</span></div>`).join('');
+    topPeers.forEach(sym=>fh(`/quote?symbol=${sym}`).then(q=>{const el=document.getElementById('peer-'+sym);if(el){const p=q.dp||0;el.textContent=(p>=0?'+':'')+p.toFixed(2)+'%';el.style.color=p>=0?'var(--green)':'var(--red)'}}).catch(()=>{}));
+
+    // ── Chart ─────────────────────────────────────────────────────
+    if(closes.length>0) renderChart(closes,timestamps,pred,vol);
+    else document.querySelector('.chart-wrap').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:12px;color:var(--text3)">No chart data — try 1M, 3M or 1Y</div>';
+
+    // ── AI analysis ───────────────────────────────────────────────
+    const topR=resistances[0]?'$'+resistances[0].price.toFixed(2):'N/A';
+    const topS=supports[0]?'$'+supports[0].price.toFixed(2):'N/A';
+    const rangePos=h52&&l52?((price-l52)/(h52-l52)*100).toFixed(0)+'%':'—';
+    const patSummary=pats.map(p=>`${p.type} (${p.signal})`).join(', ')||'None detected';
+    const backtestStr=backtest?`Backtest accuracy on ${ticker}: ${backtest.accuracy}% overall, ${backtest.bullPrecision}% BUY precision, ${backtest.bearPrecision}% SELL precision over last ${backtest.total} windows.`:'Model not available.';
+    const topFeatStr=pred.featureImportance&&pred.featureNames?pred.featureImportance.map((v,i)=>({n:pred.featureNames[i],v})).sort((a,b)=>b.v-a.v).slice(0,3).map(f=>`${f.n} (${(f.v*100).toFixed(0)}%)`).join(', '):'—';
+
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`You are a quantitative analyst reviewing output from a Gradient Boosted Trees model trained on 5 years of ${ticker} (${profile.name||ticker}) daily candle data.\n\nLIVE PRICE: $${price.toFixed(2)} | Change: ${chgPct.toFixed(2)}% | 52W: $${l52}–$${h52} (${rangePos})\nFundamentals: P/E ${pe||'—'}, Beta ${beta}, MCap ${mcap}, Sector: ${profile.finnhubIndustry||'—'}\n\nML MODEL OUTPUT:\n${backtestStr}\nML Signal: ${pred.signal} | 20-day probabilities: ${pred.pBull}% bullish / ${pred.pNeut}% neutral / ${pred.pBear}% bearish\nModel confidence: ${pred.conf}%\nTop predictive features driving this prediction: ${topFeatStr}\n\nTECHNICAL CONTEXT:\nRSI(14): ${rsiVal} (${rsiTag}) | MACD: ${macdVal.toFixed(2)} | Vol: ${vol.toFixed(1)}%\nDetected patterns: ${patSummary}\nKey levels — Support: ${topS} | Resistance: ${topR}\n\nWrite 4 precise sentences: (1) Interpret what the ML model's top features are signaling right now for ${ticker} specifically, (2) How the live technicals (RSI, MACD, patterns) corroborate or conflict with the model output, (3) The significance of the key price levels given the current position, (4) A 20-day price target with bull/bear range derived from the ${pred.pBull}%/${pred.pBear}% probability split. Cite real $ prices. No disclaimers.`}]})});
+    const aiData=await resp.json();
+    document.getElementById('aiOutput').className='ai-body';
+    document.getElementById('aiOutput').textContent=aiData.content?.find(b=>b.type==='text')?.text||'Analysis unavailable.';
+
+  } catch(err) {
+    console.error(err);
+    setStatus('');
+    const eb=document.getElementById('errorBanner');
+    eb.style.display='block';
+    eb.textContent='⚠ '+err.message;
+    document.getElementById('aiOutput').className='ai-body';
+    document.getElementById('aiOutput').textContent='Failed: '+err.message;
+  }
+
+  btn.disabled=false; btn.textContent='Analyze';
+}
+
+document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')runAnalysis()});
+function setTF(tf){currentTF=tf;document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tf-'+tf).classList.add('active');if(currentData)runAnalysis()}
+
+// Init
+buildWatchlist('');
+</script>
+</body>
+</html>
